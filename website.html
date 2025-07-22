@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Alice Hole Forest</title>
+
+<!-- Leaflet CSS -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css"/>
+
+<style>
+  /* Reset */
+  * { box-sizing: border-box; }
+  body, html {
+    margin:0; padding:0; height:100%;
+    font-family: 'Cooper Black', Arial, sans-serif;
+    color: #fff;
+    overflow-x: hidden;
+    user-select: none;
+  }
+
+  /* Background image and overlay */
+  body::before {
+    content: "";
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: url('https://upload.wikimedia.org/wikipedia/commons/6/65/Alice_Hole_Forest_-_geograph.org.uk_-_3633435.jpg') center center/cover no-repeat;
+    filter: brightness(0.35);
+    z-index: -1;
+  }
+
+  /* Header Title fixed on top */
+  #header-title {
+    position: fixed;
+    top: 20px;
+    width: 100%;
+    text-align: center;
+    font-family: 'Cooper Black', Arial, sans-serif;
+    font-size: 3rem;
+    color: #de7d18;
+    text-shadow: 2px 2px 8px #000;
+    pointer-events: none;
+    z-index: 10;
+  }
+
+  #leaf-container {
+    position: fixed; top:0; left:0; width: 100vw; height: 100vh;
+    pointer-events:none; overflow:hidden; z-index:0;
+  }
+  .leaf {
+    position: absolute; top: -50px; width: 25px; height: 25px;
+    background-image: url('https://upload.wikimedia.org/wikipedia/commons/thumb/6/60/Maple_leaf_icon.svg/1024px-Maple_leaf_icon.svg.png');
+    background-size: contain; background-repeat: no-repeat;
+    opacity: 0.8;
+    animation-name: fall, sway;
+    animation-timing-function: linear, ease-in-out;
+    animation-iteration-count: infinite, infinite;
+  }
+  @keyframes fall {
+    0% {transform: translateY(0);}
+    100% {transform: translateY(110vh);}
+  }
+  @keyframes sway {
+    0%, 100% {transform: translateX(0) rotate(0deg);}
+    50% {transform: translateX(15px) rotate(15deg);}
+  }
+
+  #app {
+    position: relative; max-width: 900px; margin: 100px auto 40px; /* top margin for header */
+    background-color: #12210ecc; border-radius: 15px;
+    box-shadow: 0 0 40px 10px #25421988;
+    padding: 40px 50px; min-height: 700px; z-index: 1;
+  }
+  .page {
+    display: none; opacity: 0;
+    transition: opacity 0.6s ease;
+  }
+  .page.active {
+    display: block; opacity: 1;
+  }
+  h1,h2 {
+    font-weight: bold; margin-top:0; margin-bottom:30px;
+    text-shadow: 2px 2px 4px #12210eaa;
+  }
+  h1 { font-size: 4rem; line-height:1.1; text-align:center; }
+  h2 { font-size: 2.2rem; }
+  p {
+    font-size: 1.3rem; line-height: 1.7; margin-bottom: 40px;
+  }
+  .btn, .start-btn, .control-button, .nav-arrow {
+    display: inline-flex; align-items:center; justify-content:center;
+    background-color: #8a5218; border:5px solid #de7d18; border-radius:15px;
+    font-weight: bold; font-family: 'Cooper Black', Arial, sans-serif;
+    font-size: 1.8rem; color:#fff; cursor:pointer;
+    padding: 20px; width: 220px; max-width: 90%;
+    box-shadow: inset 2px 2px 5px #3e2d11;
+    transition: background-color 0.3s ease, transform 0.2s ease;
+    user-select:none; margin: 20px auto; gap: 10px; text-align:center;
+  }
+  .btn:hover, .start-btn:hover, .control-button:hover, .nav-arrow:hover {
+    background-color: #bf7a17; transform: scale(1.05);
+  }
+  .icon {
+    width: 30px; height: 30px; fill: #de7d18; flex-shrink: 0;
+  }
+  .nav-arrows {
+    display: flex; justify-content: space-between;
+    max-width: 300px; margin: 20px auto 0;
+    z-index: 10;
+  }
+  .nav-arrow {
+    width: 70px; height: 70px; font-size: 2.5rem;
+  }
+  #welcome-buttons {
+    display: flex; flex-wrap: wrap; gap: 20px;
+    justify-content: center; margin-top: 80px;
+  }
+  #map {
+    height: 500px; border-radius: 15px; box-shadow: 0 0 20px #254219aa;
+    margin-bottom: 20px;
+    border: 3px solid #de7d18;
+    background-color: #21471f; position: relative; z-index: 1;
+  }
+  #ar-video video {
+    border-radius: 15px; box-shadow: 0 0 20px #555;
+    max-width: 100%; max-height: 350px; display: block; margin: 0 auto 20px;
+  }
+  #ar-video .subtitle-box {
+    background-color: white; color: black; width: 100%;
+    max-width: 600px; padding: 20px; margin: 0 auto 20px;
+    border-radius: 15px; font-weight: bold; font-size: 1.3rem;
+    text-align: center; box-shadow: 0 0 12px #999; min-height: 60px;
+  }
+  #ar-video .control-buttons {
+    display: flex; justify-content: center; gap: 25px; margin-bottom: 40px;
+  }
+  #ar-video .control-button {
+    width: 60px; height: 60px; font-size: 2rem;
+  }
+  #subtitle-options {
+    display: flex; justify-content: center; flex-wrap: wrap;
+    gap: 15px; max-width: 600px; margin: 0 auto 40px;
+  }
+  #subtitle-options button {
+    background-color: #8a5218; border: 4px solid #de7d18;
+    border-radius: 15px; color: white; font-weight: bold;
+    font-family: 'Cooper Black', Arial, sans-serif; padding: 10px 20px;
+    cursor: pointer; transition: background-color 0.3s ease, transform 0.2s ease;
+    user-select: none; font-size: 1rem;
+  }
+  #subtitle-options button:hover, #subtitle-options button.active {
+    background-color: #bf7a17; transform: scale(1.05);
+  }
+  @media (max-width: 950px) {
+    #app {
+      max-width: 100%; margin: 20px; padding: 20px; min-height: auto;
+    }
+    .btn, .start-btn {
+      width: 100%; font-size: 1.5rem;
+    }
+    h1 { font-size: 3rem; }
+    h2 { font-size: 1.8rem; }
+    p { font-size: 1.1rem; }
+  }
+</style>
+</head>
+<body>
+  <div id="header-title">Alice Hole Forest</div>
+  <div id="leaf-container"></div>
+
+  <div id="app" role="main">
+    <section id="welcome" class="page active" aria-label="Welcome">
+      <h1>Alice<br>Hole<br>Forest</h1>
+      <div id="welcome-buttons">
+        <button class="btn" onclick="showPage('about')" aria-label="About Section">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm1 15h-2v-2h2zm0-4h-2V7h2z"/></svg>
+          ABOUT
+        </button>
+        <button class="btn" onclick="showPage('map')" aria-label="Map Section">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2L2 7l10 5 10-5-10-5zm0 6-10 5v8l10-5 10 5v-8l-10-5z"/></svg>
+          MAP
+        </button>
+        <button class="btn" onclick="showPage('how-to')" aria-label="How to Use Section">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 12l2 2 4-4M12 20c4.418 0 8-3.582 8-8s-3.582-8-8-8-8 3.582-8 8 3.582 8 8 8z"/></svg>
+          HOW TO USE
+        </button>
+        <button class="btn" onclick="showPage('ar-video')" aria-label="AR Video Section">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M10 16.5l6-4.5-6-4.5v9zM4 19h16v2H4v-2z"/></svg>
+          AR VIDEO
+        </button>
+      </div>
+    </section>
+
+    <section id="about" class="page" aria-label="About Section">
+      <h2>About Alice Hole Forest</h2>
+      <p>
+        Alice Hole Forest is 247 hectares and has a rich history going back to the Iron Age. It was replanted in 1655 and has been a significant site for conservation and timber production. Now it is part of the South Downs National Park and a favorite spot for nature lovers.
+      </p>
+      <div class="nav-arrows">
+        <button class="nav-arrow" onclick="showPage('welcome')" aria-label="Back to Welcome">&#9664;</button>
+        <button class="nav-arrow" onclick="showPage('map')" aria-label="Next to Map">&#9654;</button>
+      </div>
+    </section>
+
+    <section id="map" class="page" aria-label="Map Section">
+      <h2>Map</h2>
+      <div id="map"></div>
+      <button class="start-btn" onclick="showPage('how-to')" aria-label="Start Walk">START</button>
+      <div class="nav-arrows" style="margin-top: 30px;">
+        <button class="nav-arrow" onclick="showPage('about')" aria-label="Back to About">&#9664;</button>
+        <button class="nav-arrow" onclick="showPage('how-to')" aria-label="Next to How to Use">&#9654;</button>
+      </div>
+    </section>
+
+    <section id="how-to" class="page" aria-label="How to Use Section">
+      <h2>How to Use</h2>
+      <p>
+        Welcome to the Alice Hole Virtual Ranger walk!<br><br>
+        We hope you have a great time here, and to make sure you do, here’s a quick guide on how to use our easy and accessible interface!<br><br>
+        At the start of your walk you will be at our visitors center, and our first interactive location. Simply tap on the numbered marker you wish to view, and then hit start!<br><br>
+        Each location features a talk by our very own Forest Ranger, these talks are cut down to several short, digestible parts to make sure you don’t miss anything good.<br><br>
+        You can pause, go back, or skip a section with our labelled buttons at the bottom of the screen, as well as returning to the map at any time with the arrow in the top left.<br><br>
+        When each section finishes, you’ll be able to start the next part whenever you’re ready, so feel free to take your time when learning about all the amazing things that go on here at Alice Hole forest!<br><br>
+        If you ever get stuck or confused, hit the question mark in the top right of your screen, and we’ll get brought back here!<br><br>
+        Have a great time in our historic forest!
+      </p>
+      <div class="nav-arrows">
+        <button class="nav-arrow" onclick="showPage('map')" aria-label="Back to Map">&#9664;</button>
+        <button class="nav-arrow" onclick="showPage('ar-video')" aria-label="Next to AR Video">&#9654;</button>
+      </div>
+    </section>
+
+    <section id="ar-video" class="page" aria-label="AR Video Section">
+      <h2>AR Video</h2>
+      <div id="subtitle-box" class="subtitle-box">
+        Select a subtitle below to display it here.
+      </div>
+      <video id="ar-video-player" controls playsinline>
+        <source src="https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.webm" type="video/webm" />
+        <source src="https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4" type="video/mp4" />
+        Your browser does not support the video tag.
+      </video>
+      <div class="control-buttons">
+        <button class="control-button" onclick="skipBackward()" aria-label="Skip Backward 5 seconds">&#9664;</button>
+        <button class="control-button" onclick="togglePause()" aria-label="Play/Pause">&#9612;&#9612;</button>
+        <button class="control-button" onclick="skipForward()" aria-label="Skip Forward 5 seconds">&#9654;</button>
+      </div>
+      <div id="subtitle-options">
+        <button onclick="showSubtitle('Welcome to Alice Hole Forest, enjoy your walk!')" aria-label="Subtitle 1">Intro</button>
+        <button onclick="showSubtitle('The forest covers 247 hectares and has a rich history.')" aria-label="Subtitle 2">History</button>
+        <button onclick="showSubtitle('Our Forest Ranger narrates this section.')" aria-label="Subtitle 3">Ranger Talk</button>
+        <button onclick="showSubtitle('Feel free to pause or skip any section!')" aria-label="Subtitle 4">Controls</button>
+      </div>
+      <div class="nav-arrows">
+        <button class="nav-arrow" onclick="showPage('how-to')" aria-label="Back to How to Use">&#9664;</button>
+        <button class="nav-arrow" onclick="showPage('welcome')" aria-label="Back to Welcome">&#9654;</button>
+      </div>
+    </section>
+  </div>
+
+  <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
+
+  <script>
+    // Leaf falling animation
+    const leafContainer = document.getElementById('leaf-container');
+    const leafCount = 25;
+    function createLeaf() {
+      const leaf = document.createElement('div');
+      leaf.classList.add('leaf');
+      leaf.style.left = Math.random() * 100 + 'vw';
+      leaf.style.animationDuration = (5 + Math.random() * 7) + 's, ' + (2 + Math.random() * 3) + 's';
+      leaf.style.opacity = 0.5 + Math.random() * 0.5;
+      leaf.style.transform = `rotate(${Math.random() * 360}deg)`;
+      leafContainer.appendChild(leaf);
+
+      setTimeout(() => {
+        leaf.remove();
+        createLeaf();
+      }, (5000 + Math.random() * 7000));
+    }
+    for(let i = 0; i < leafCount; i++) {
+      setTimeout(createLeaf, i * 500);
+    }
+
+    // Page navigation
+    function showPage(id) {
+      const pages = document.querySelectorAll('.page');
+      pages.forEach(page => {
+        page.classList.toggle('active', page.id === id);
+      });
+      document.querySelector('.page.active').scrollTop = 0;
+
+      if (id === 'map') {
+        initMap();
+      }
+    }
+
+    // Leaflet Map initialization
+    let mapInitialized = false;
+    function initMap() {
+      if (mapInitialized) return;
+      mapInitialized = true;
+
+      const map = L.map('map').setView([50.900, -0.688], 15);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '© OpenStreetMap contributors'
+      }).addTo(map);
+
+      L.marker([50.901, -0.690]).addTo(map).bindPopup('Visitor Center');
+      L.marker([50.899, -0.686]).addTo(map).bindPopup('Old Oak Tree');
+      L.marker([50.898, -0.689]).addTo(map).bindPopup('Forest Ranger Station');
+    }
+
+    // AR Video controls
+    const video = document.getElementById('ar-video-player');
+    function skipBackward() {
+      video.currentTime = Math.max(0, video.currentTime - 5);
+    }
+    function skipForward() {
+      video.currentTime = Math.min(video.duration, video.currentTime + 5);
+    }
+    function togglePause() {
+      if (video.paused) {
+        video.play();
+      } else {
+        video.pause();
+      }
+    }
+
+    // Subtitle controls
+    const subtitleBox = document.getElementById('subtitle-box');
+    const subtitleButtons = document.querySelectorAll('#subtitle-options button');
+    function showSubtitle(text) {
+      subtitleBox.textContent = text;
+      subtitleButtons.forEach(btn => btn.classList.remove('active'));
+      event.target.classList.add('active');
+    }
+  </script>
+</body>
+</html>
